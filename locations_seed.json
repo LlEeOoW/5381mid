@@ -1,0 +1,162 @@
+[
+  {
+    "id": "ca1941b7-55ba-4289-9342-beadf380b1bf",
+    "name": "5th Ave & 42nd St",
+    "zone": "Midtown",
+    "lat": 40.7527,
+    "lng": -73.982,
+    "road_type": "intersection"
+  },
+  {
+    "id": "428ff36b-51a1-4298-9b61-fbcf74636cc3",
+    "name": "7th Ave & 34th St",
+    "zone": "Midtown",
+    "lat": 40.7484,
+    "lng": -73.9967,
+    "road_type": "intersection"
+  },
+  {
+    "id": "68f7915a-76f0-43a9-a372-c78e57388d67",
+    "name": "Park Ave Tunnel North",
+    "zone": "Midtown",
+    "lat": 40.7549,
+    "lng": -73.9741,
+    "road_type": "segment"
+  },
+  {
+    "id": "56951070-2d12-4bed-adcb-082be6d411ab",
+    "name": "Lincoln Tunnel Approach",
+    "zone": "Midtown",
+    "lat": 40.7587,
+    "lng": -74.002,
+    "road_type": "highway"
+  },
+  {
+    "id": "bafe596b-e846-4d66-9a53-c5fa4b58d3bf",
+    "name": "9th Ave & 57th St",
+    "zone": "Midtown",
+    "lat": 40.7668,
+    "lng": -73.9928,
+    "road_type": "intersection"
+  },
+  {
+    "id": "43048937-90b8-4b8b-8103-70ab84612574",
+    "name": "FDR Drive at 23rd St",
+    "zone": "Downtown",
+    "lat": 40.7396,
+    "lng": -73.9737,
+    "road_type": "highway"
+  },
+  {
+    "id": "5fee3196-8c57-4c9d-a7be-b08c62788d0a",
+    "name": "Canal St & Broadway",
+    "zone": "Downtown",
+    "lat": 40.7186,
+    "lng": -74.002,
+    "road_type": "intersection"
+  },
+  {
+    "id": "634b6ac4-f4d3-4050-a890-5d1707beb6ea",
+    "name": "Brooklyn Bridge Entrance",
+    "zone": "Downtown",
+    "lat": 40.7061,
+    "lng": -73.9969,
+    "road_type": "segment"
+  },
+  {
+    "id": "6b9e8cc2-894e-487c-a9c8-0ee3a6c68d29",
+    "name": "West Side Hwy at Chambers",
+    "zone": "Downtown",
+    "lat": 40.715,
+    "lng": -74.0133,
+    "road_type": "highway"
+  },
+  {
+    "id": "9812cecd-1f5b-416e-ba54-46a81178edfe",
+    "name": "Wall St & Broadway",
+    "zone": "Downtown",
+    "lat": 40.7074,
+    "lng": -74.0113,
+    "road_type": "intersection"
+  },
+  {
+    "id": "5324bd5b-25cf-430f-919d-d7ca6f91b1bf",
+    "name": "125th St & Lex Ave",
+    "zone": "Uptown",
+    "lat": 40.796,
+    "lng": -73.9373,
+    "road_type": "intersection"
+  },
+  {
+    "id": "be6d46df-985a-4a5f-8846-1657522d7bd5",
+    "name": "FDR Drive at 96th St",
+    "zone": "Uptown",
+    "lat": 40.785,
+    "lng": -73.9453,
+    "road_type": "highway"
+  },
+  {
+    "id": "e9267988-8a24-4066-a4f5-2af67c71c853",
+    "name": "Broadway & 145th St",
+    "zone": "Uptown",
+    "lat": 40.8237,
+    "lng": -73.9413,
+    "road_type": "intersection"
+  },
+  {
+    "id": "f9342af2-bced-4223-8c3d-4c919022d4f0",
+    "name": "Riverside Dr & 72nd St",
+    "zone": "Uptown",
+    "lat": 40.7777,
+    "lng": -73.988,
+    "road_type": "segment"
+  },
+  {
+    "id": "95e6a627-719c-46e2-8352-a71d0398f995",
+    "name": "Atlantic Ave & Flatbush",
+    "zone": "Brooklyn",
+    "lat": 40.6843,
+    "lng": -73.9774,
+    "road_type": "intersection"
+  },
+  {
+    "id": "5f831972-2c5c-47e6-a212-c004857b668d",
+    "name": "BQE at Atlantic Ave",
+    "zone": "Brooklyn",
+    "lat": 40.688,
+    "lng": -73.99,
+    "road_type": "highway"
+  },
+  {
+    "id": "2b124882-1d8f-4599-b284-c7669406f306",
+    "name": "4th Ave & 9th St",
+    "zone": "Brooklyn",
+    "lat": 40.6707,
+    "lng": -73.9867,
+    "road_type": "intersection"
+  },
+  {
+    "id": "a9ef5c94-36f4-49f7-834d-14e4af72b5ac",
+    "name": "Queens Blvd & Junction",
+    "zone": "Queens",
+    "lat": 40.7282,
+    "lng": -73.8672,
+    "road_type": "segment"
+  },
+  {
+    "id": "a510b787-e2be-4b9e-a3a1-9c817cb40887",
+    "name": "LIE at Grand Ave",
+    "zone": "Queens",
+    "lat": 40.7204,
+    "lng": -73.8656,
+    "road_type": "highway"
+  },
+  {
+    "id": "0c6656da-98c1-4602-9012-630a12184fd8",
+    "name": "Northern Blvd & Main St",
+    "zone": "Queens",
+    "lat": 40.7592,
+    "lng": -73.8303,
+    "road_type": "intersection"
+  }
+]

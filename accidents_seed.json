@@ -1,0 +1,245 @@
+[
+  {
+    "id": "71bf3e7e-f5c7-4036-94fd-63e3d8eb9258",
+    "location_id": "5fee3196-8c57-4c9d-a7be-b08c62788d0a",
+    "occurred_at": "2026-03-07T21:25:00+00:00",
+    "severity": "moderate",
+    "description": "Hit and run",
+    "vehicles_involved": 3,
+    "injuries": 1
+  },
+  {
+    "id": "958f8fef-7bd3-48dd-81f2-295f4002f79f",
+    "location_id": "56951070-2d12-4bed-adcb-082be6d411ab",
+    "occurred_at": "2026-03-07T12:56:00+00:00",
+    "severity": "moderate",
+    "description": "Hit and run",
+    "vehicles_involved": 2,
+    "injuries": 2
+  },
+  {
+    "id": "bc99eb74-f9d1-424f-bd2a-05ebd962397a",
+    "location_id": "428ff36b-51a1-4298-9b61-fbcf74636cc3",
+    "occurred_at": "2026-03-06T11:19:00+00:00",
+    "severity": "minor",
+    "description": "Single vehicle hit barrier",
+    "vehicles_involved": 2,
+    "injuries": 0
+  },
+  {
+    "id": "b3b1a083-f907-41a9-b787-ad2b77a6326c",
+    "location_id": "5fee3196-8c57-4c9d-a7be-b08c62788d0a",
+    "occurred_at": "2026-03-05T17:57:00+00:00",
+    "severity": "moderate",
+    "description": "Side-impact at intersection",
+    "vehicles_involved": 4,
+    "injuries": 3
+  },
+  {
+    "id": "ef3ede8b-7212-4ea1-91fa-0cdf6c08dcf1",
+    "location_id": "428ff36b-51a1-4298-9b61-fbcf74636cc3",
+    "occurred_at": "2026-03-04T07:18:00+00:00",
+    "severity": "moderate",
+    "description": "Rollover",
+    "vehicles_involved": 3,
+    "injuries": 1
+  },
+  {
+    "id": "62fe0c31-3d85-4b39-b055-33be4f3125d7",
+    "location_id": "bafe596b-e846-4d66-9a53-c5fa4b58d3bf",
+    "occurred_at": "2026-03-03T04:48:00+00:00",
+    "severity": "minor",
+    "description": "Vehicle left roadway",
+    "vehicles_involved": 4,
+    "injuries": 2
+  },
+  {
+    "id": "abc206a5-2d8c-40ff-af8d-8a7268b7fdb1",
+    "location_id": "2b124882-1d8f-4599-b284-c7669406f306",
+    "occurred_at": "2026-03-03T01:00:00+00:00",
+    "severity": "serious",
+    "description": "Pedestrian involved",
+    "vehicles_involved": 5,
+    "injuries": 0
+  },
+  {
+    "id": "4e1075f5-f29a-4a21-8814-e323b30804b3",
+    "location_id": "56951070-2d12-4bed-adcb-082be6d411ab",
+    "occurred_at": "2026-03-02T21:08:00+00:00",
+    "severity": "moderate",
+    "description": "Rear-end collision",
+    "vehicles_involved": 4,
+    "injuries": 2
+  },
+  {
+    "id": "409f3aba-5597-431a-b799-164511a65384",
+    "location_id": "5f831972-2c5c-47e6-a212-c004857b668d",
+    "occurred_at": "2026-03-01T18:44:00+00:00",
+    "severity": "minor",
+    "description": "Rollover",
+    "vehicles_involved": 3,
+    "injuries": 0
+  },
+  {
+    "id": "f691d764-cea1-4f72-a4b3-949525f78da0",
+    "location_id": "5fee3196-8c57-4c9d-a7be-b08c62788d0a",
+    "occurred_at": "2026-02-28T18:22:00+00:00",
+    "severity": "moderate",
+    "description": "Hit and run",
+    "vehicles_involved": 2,
+    "injuries": 1
+  },
+  {
+    "id": "5c2e460f-ad1c-4859-b5d8-3272155119ef",
+    "location_id": "be6d46df-985a-4a5f-8846-1657522d7bd5",
+    "occurred_at": "2026-02-28T04:47:00+00:00",
+    "severity": "minor",
+    "description": "Multi-vehicle pileup",
+    "vehicles_involved": 2,
+    "injuries": 1
+  },
+  {
+    "id": "91095a91-7916-460e-8aef-ef6fd2542874",
+    "location_id": "a9ef5c94-36f4-49f7-834d-14e4af72b5ac",
+    "occurred_at": "2026-02-26T22:40:00+00:00",
+    "severity": "serious",
+    "description": "Rear-end collision",
+    "vehicles_involved": 3,
+    "injuries": 2
+  },
+  {
+    "id": "3928346c-e23d-4b46-83af-d9bb3a1a1f5a",
+    "location_id": "ca1941b7-55ba-4289-9342-beadf380b1bf",
+    "occurred_at": "2026-02-25T17:42:00+00:00",
+    "severity": "moderate",
+    "description": "Pedestrian involved",
+    "vehicles_involved": 4,
+    "injuries": 3
+  },
+  {
+    "id": "b1aaedf7-e400-4476-a877-a64e7677d19c",
+    "location_id": "5fee3196-8c57-4c9d-a7be-b08c62788d0a",
+    "occurred_at": "2026-02-23T22:12:00+00:00",
+    "severity": "moderate",
+    "description": "Cyclist involved",
+    "vehicles_involved": 4,
+    "injuries": 1
+  },
+  {
+    "id": "a35c6fef-73ba-4d09-ad2c-9edc32e3bc49",
+    "location_id": "95e6a627-719c-46e2-8352-a71d0398f995",
+    "occurred_at": "2026-02-21T00:57:00+00:00",
+    "severity": "minor",
+    "description": "Rollover",
+    "vehicles_involved": 4,
+    "injuries": 0
+  },
+  {
+    "id": "c2d0e75e-139c-4ea7-8a43-0be965c989b0",
+    "location_id": "5324bd5b-25cf-430f-919d-d7ca6f91b1bf",
+    "occurred_at": "2026-02-19T21:52:00+00:00",
+    "severity": "moderate",
+    "description": "Hit and run",
+    "vehicles_involved": 3,
+    "injuries": 0
+  },
+  {
+    "id": "ee044d02-d9c0-41ff-860e-e51a95478b92",
+    "location_id": "6b9e8cc2-894e-487c-a9c8-0ee3a6c68d29",
+    "occurred_at": "2026-02-17T20:30:00+00:00",
+    "severity": "fatal",
+    "description": "Vehicle left roadway",
+    "vehicles_involved": 5,
+    "injuries": 2
+  },
+  {
+    "id": "d513032d-ab50-4d63-8622-040d2a9d88ce",
+    "location_id": "428ff36b-51a1-4298-9b61-fbcf74636cc3",
+    "occurred_at": "2026-02-17T08:32:00+00:00",
+    "severity": "minor",
+    "description": "Cyclist involved",
+    "vehicles_involved": 4,
+    "injuries": 0
+  },
+  {
+    "id": "4525b972-c46b-4b49-b050-b79d4b91a5b7",
+    "location_id": "6b9e8cc2-894e-487c-a9c8-0ee3a6c68d29",
+    "occurred_at": "2026-02-14T16:31:00+00:00",
+    "severity": "minor",
+    "description": "Single vehicle hit barrier",
+    "vehicles_involved": 4,
+    "injuries": 2
+  },
+  {
+    "id": "10e65484-ee81-48f0-adc9-861194190902",
+    "location_id": "a9ef5c94-36f4-49f7-834d-14e4af72b5ac",
+    "occurred_at": "2026-02-13T23:44:00+00:00",
+    "severity": "moderate",
+    "description": "Single vehicle hit barrier",
+    "vehicles_involved": 2,
+    "injuries": 2
+  },
+  {
+    "id": "29677b2f-4c07-418d-a203-6cc018250860",
+    "location_id": "5324bd5b-25cf-430f-919d-d7ca6f91b1bf",
+    "occurred_at": "2026-02-13T00:23:00+00:00",
+    "severity": "moderate",
+    "description": "Hit and run",
+    "vehicles_involved": 4,
+    "injuries": 3
+  },
+  {
+    "id": "f84aafb6-18fa-4fa2-9109-8f6662524f9d",
+    "location_id": "6b9e8cc2-894e-487c-a9c8-0ee3a6c68d29",
+    "occurred_at": "2026-02-08T02:16:00+00:00",
+    "severity": "serious",
+    "description": "Cyclist involved",
+    "vehicles_involved": 2,
+    "injuries": 0
+  },
+  {
+    "id": "aaf8203a-e4d6-48c8-b161-7b87838718b1",
+    "location_id": "43048937-90b8-4b8b-8103-70ab84612574",
+    "occurred_at": "2026-02-07T23:44:00+00:00",
+    "severity": "serious",
+    "description": "Rear-end collision",
+    "vehicles_involved": 3,
+    "injuries": 2
+  },
+  {
+    "id": "60ffc20f-3e3c-4dec-87fa-a91001a46f68",
+    "location_id": "bafe596b-e846-4d66-9a53-c5fa4b58d3bf",
+    "occurred_at": "2026-02-06T09:26:00+00:00",
+    "severity": "minor",
+    "description": "Multi-vehicle pileup",
+    "vehicles_involved": 4,
+    "injuries": 1
+  },
+  {
+    "id": "82927be0-0aa9-406d-966b-8d4f32379a27",
+    "location_id": "43048937-90b8-4b8b-8103-70ab84612574",
+    "occurred_at": "2026-02-06T05:10:00+00:00",
+    "severity": "serious",
+    "description": "Rear-end collision",
+    "vehicles_involved": 4,
+    "injuries": 3
+  },
+  {
+    "id": "ea23e8a1-3a43-4ab0-a735-ea2192ad9d1a",
+    "location_id": "428ff36b-51a1-4298-9b61-fbcf74636cc3",
+    "occurred_at": "2026-02-05T21:15:00+00:00",
+    "severity": "moderate",
+    "description": "Pedestrian involved",
+    "vehicles_involved": 3,
+    "injuries": 3
+  },
+  {
+    "id": "8d503146-5924-4f81-8f90-aac52e15522e",
+    "location_id": "e9267988-8a24-4066-a4f5-2af67c71c853",
+    "occurred_at": "2026-02-05T21:13:00+00:00",
+    "severity": "minor",
+    "description": "Rollover",
+    "vehicles_involved": 3,
+    "injuries": 0
+  }
+]
