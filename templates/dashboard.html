@@ -1,0 +1,1491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CityFlow — Traffic Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+<style>
+/* ── Reset & tokens ──────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #0b0d10;
+  --surface:   #111418;
+  --border:    #1c2028;
+  --border2:   #242830;
+  --text:      #d4d8df;
+  --muted:     #4a5260;
+  --dim:       #2a303a;
+  --amber:     #f5a623;
+  --amber-dim: rgba(245,166,35,.10);
+  --red:       #e8372b;
+  --red-dim:   rgba(232,55,43,.12);
+  --orange:    #f07030;
+  --yellow:    #e8c531;
+  --green:     #3ec97e;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --font-sans: 'IBM Plex Sans', sans-serif;
+  --font-disp: 'Bebas Neue', sans-serif;
+}
+
+html, body { background: var(--bg); color: var(--text); font-family: var(--font-mono); min-height: 100vh; }
+
+/* ── Scrollbar ───────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 2px; }
+
+/* ── Animations ──────────────────────────────────────────────── */
+@keyframes fadeUp   { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+@keyframes pulse    { 0%,100% { opacity:1; } 50% { opacity:.35; } }
+@keyframes spin     { to { transform:rotate(360deg); } }
+@keyframes scanline { 0% { top:-6%; } 100% { top:106%; } }
+
+.fade-up   { animation: fadeUp .35s ease both; }
+.pulsing   { animation: pulse 1.6s ease-in-out infinite; }
+.spinning  { animation: spin .8s linear infinite; }
+
+/* ── Layout ──────────────────────────────────────────────────── */
+#app { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* ── Header ──────────────────────────────────────────────────── */
+header {
+  border-bottom: 1px solid var(--border);
+  padding: 0 28px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(11,13,16,.92);
+  backdrop-filter: blur(8px);
+}
+
+.logo {
+  display: flex; align-items: center; gap: 12px;
+}
+.logo-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--red);
+  box-shadow: 0 0 10px var(--red);
+}
+.logo-text {
+  font-family: var(--font-disp);
+  font-size: 22px; letter-spacing: .12em; color: #fff;
+}
+.logo-sub {
+  font-size: 9px; letter-spacing: .25em; color: var(--muted);
+  margin-top: 1px;
+}
+
+nav { display: flex; gap: 2px; }
+.tab-btn {
+  background: none; border: none; cursor: pointer;
+  font-family: var(--font-mono); font-size: 10px;
+  letter-spacing: .2em; color: var(--muted);
+  padding: 6px 14px;
+  border-bottom: 2px solid transparent;
+  transition: color .15s, border-color .15s;
+}
+.tab-btn:hover  { color: var(--text); }
+.tab-btn.active { color: var(--amber); border-bottom-color: var(--amber); }
+
+.header-right { display: flex; align-items: center; gap: 14px; }
+.last-updated { font-size: 10px; color: var(--muted); letter-spacing: .1em; }
+.refresh-btn {
+  background: none; border: 1px solid var(--border2);
+  color: var(--muted); cursor: pointer; font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: .15em;
+  padding: 4px 12px; border-radius: 2px;
+  display: flex; align-items: center; gap: 6px;
+  transition: all .15s;
+}
+.refresh-btn:hover { border-color: var(--amber); color: var(--amber); }
+
+/* ── Main content ────────────────────────────────────────────── */
+main { padding: 22px 28px; flex: 1; }
+
+/* ── KPI strip ───────────────────────────────────────────────── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 16px 18px;
+}
+.kpi-label  { font-size: 9px; letter-spacing: .22em; color: var(--muted); margin-bottom: 10px; }
+.kpi-value  { font-family: var(--font-disp); font-size: 48px; line-height: 1; color: #fff; }
+.kpi-unit   { font-size: 11px; color: var(--muted); margin-left: 4px; }
+.kpi-badge  { display: inline-block; margin-top: 8px; font-size: 9px; letter-spacing: .18em; padding: 2px 8px; border-radius: 2px; }
+
+/* ── Cards ───────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+.card-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.card-title { font-size: 10px; letter-spacing: .22em; color: var(--muted); }
+
+/* ── Zone pills ──────────────────────────────────────────────── */
+.zone-pills { display: flex; gap: 5px; flex-wrap: wrap; }
+.zone-pill {
+  background: none; border: 1px solid var(--border2);
+  color: var(--muted); cursor: pointer;
+  font-family: var(--font-mono); font-size: 9px;
+  letter-spacing: .14em; padding: 3px 10px; border-radius: 2px;
+  transition: all .15s;
+}
+.zone-pill:hover  { border-color: var(--amber); color: var(--amber-dim); }
+.zone-pill.active { border-color: var(--amber); color: var(--amber); background: var(--amber-dim); }
+
+/* ── Table ───────────────────────────────────────────────────── */
+.tbl-head {
+  display: grid;
+  grid-template-columns: 1fr 90px 60px 70px 75px;
+  padding: 7px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.tbl-head span { font-size: 8px; letter-spacing: .2em; color: var(--dim); }
+
+.tbl-row {
+  display: grid;
+  grid-template-columns: 1fr 90px 60px 70px 75px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  transition: background .1s;
+  align-items: center;
+}
+.tbl-row:hover    { background: rgba(255,255,255,.025); }
+.tbl-row:last-child { border-bottom: none; }
+
+.loc-name { font-size: 11px; color: #c8ccd4; }
+.loc-meta { font-size: 9px; color: var(--muted); margin-top: 2px; letter-spacing: .08em; }
+.zone-tag { font-size: 9px; color: var(--muted); letter-spacing: .1em; }
+
+.bar-wrap { display: flex; align-items: center; gap: 6px; }
+.bar-bg   { width: 40px; height: 3px; background: var(--dim); border-radius: 2px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 2px; transition: width .4s ease; }
+.bar-num  { font-size: 12px; font-weight: 500; min-width: 22px; }
+
+.speed-val { font-size: 11px; color: #8090a0; }
+.delay-val { font-size: 11px; }
+
+/* ── Severity colors ─────────────────────────────────────────── */
+.sev-low      { color: var(--green); }
+.sev-moderate { color: var(--yellow); }
+.sev-high     { color: var(--orange); }
+.sev-critical { color: var(--red); }
+
+.badge-low      { background: rgba(62,201,126,.12); color: var(--green); }
+.badge-moderate { background: rgba(232,197,49,.12); color: var(--yellow); }
+.badge-high     { background: rgba(240,112,48,.12);  color: var(--orange); }
+.badge-critical { background: var(--red-dim);         color: var(--red); }
+
+/* ── Two-column layout for overview ─────────────────────────── */
+.overview-grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 14px;
+}
+.right-col { display: flex; flex-direction: column; gap: 14px; }
+
+/* ── Top-5 list ──────────────────────────────────────────────── */
+.top5-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.top5-item:last-child { border-bottom: none; }
+.top5-rank { font-family: var(--font-disp); font-size: 26px; color: var(--dim); width: 26px; text-align: right; }
+.top5-info { flex: 1; }
+.top5-name { font-size: 11px; color: #b8bcc6; margin-bottom: 4px; }
+.top5-bar  { height: 3px; background: var(--dim); border-radius: 2px; overflow: hidden; }
+.top5-fill { height: 100%; border-radius: 2px; }
+
+/* ── Chart containers ────────────────────────────────────────── */
+.chart-box { padding: 16px; }
+canvas { display: block; }
+
+/* ── Trends tab ──────────────────────────────────────────────── */
+.trends-grid { display: grid; gap: 14px; }
+.peak-cards  { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+.peak-card   { background: var(--surface); border: 1px solid var(--border); border-radius: 3px; padding: 18px; }
+.peak-label  { font-size: 9px; letter-spacing: .2em; color: var(--muted); margin-bottom: 6px; }
+.peak-hours  { font-size: 10px; color: var(--muted); margin-bottom: 14px; }
+.peak-num    { font-family: var(--font-disp); font-size: 56px; line-height: 1; }
+
+/* ── AI tab ──────────────────────────────────────────────────── */
+.ai-grid { display: grid; grid-template-columns: 360px 1fr; gap: 16px; max-width: 1000px; }
+.query-type-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 16px; }
+.qtype-btn {
+  background: var(--bg); border: 1px solid var(--border2);
+  color: var(--muted); cursor: pointer; font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: .12em; padding: 10px 8px;
+  text-align: left; transition: all .15s;
+}
+.qtype-btn:hover  { border-color: var(--amber); }
+.qtype-btn.active { border-color: var(--amber); color: var(--amber); background: var(--amber-dim); }
+.qtype-icon { display: block; font-size: 18px; margin-bottom: 4px; }
+
+textarea.custom-prompt {
+  width: 100%; background: var(--bg); border: 1px solid var(--border2);
+  color: var(--text); font-family: var(--font-mono); font-size: 11px;
+  padding: 10px; resize: vertical; min-height: 72px; margin-bottom: 12px;
+  outline: none; border-radius: 2px;
+  transition: border-color .15s;
+}
+textarea.custom-prompt:focus { border-color: var(--amber); }
+
+.gen-btn {
+  width: 100%; background: var(--amber); border: none; cursor: pointer;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .2em;
+  padding: 11px; font-weight: 500; color: #000;
+  border-radius: 2px; transition: opacity .15s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.gen-btn:hover    { opacity: .88; }
+.gen-btn:disabled { background: var(--dim); color: var(--muted); cursor: not-allowed; opacity: 1; }
+
+.ai-result { background: var(--surface); border: 1px solid var(--border); border-radius: 3px; padding: 20px; }
+.ai-snap   { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 18px; }
+.snap-card { background: var(--bg); border-radius: 2px; padding: 10px 12px; }
+.snap-lbl  { font-size: 8px; letter-spacing: .18em; color: var(--muted); margin-bottom: 6px; }
+.snap-val  { font-family: var(--font-disp); font-size: 30px; }
+.ai-text   { font-size: 12px; line-height: 1.85; color: #b0b8c4; white-space: pre-line; }
+.ai-footer { margin-top: 14px; font-size: 9px; color: var(--muted); letter-spacing: .1em; }
+.ai-placeholder {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 220px; color: var(--muted); font-size: 11px; letter-spacing: .12em; gap: 10px;
+}
+.ai-placeholder-icon { font-size: 36px; opacity: .3; }
+
+/* ── API docs tab ────────────────────────────────────────────── */
+.api-section { max-width: 820px; }
+.endpoint-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 3px; padding: 18px; margin-bottom: 10px;
+}
+.ep-row  { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.method-badge {
+  font-size: 9px; letter-spacing: .12em; font-weight: 500;
+  padding: 2px 8px; border-radius: 2px;
+}
+.method-get  { background: rgba(62,201,126,.14); color: var(--green); }
+.method-post { background: rgba(240,112,48,.14);  color: var(--orange); }
+.ep-path { font-size: 13px; color: #a0a8b4; font-family: var(--font-mono); }
+.ep-desc { font-size: 11px; color: var(--muted); margin-bottom: 12px; line-height: 1.6; }
+.param-row {
+  display: grid; grid-template-columns: 140px 70px 1fr;
+  gap: 8px; padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+}
+.param-row:last-child { border-bottom: none; }
+.param-name { color: var(--amber); font-family: var(--font-mono); }
+.param-type { color: var(--muted); }
+.param-desc { color: #6a7480; }
+.ep-example {
+  background: var(--bg); border-left: 2px solid var(--border2);
+  padding: 8px 12px; margin-top: 10px; border-radius: 0 2px 2px 0;
+  font-size: 10px; color: var(--muted); white-space: pre; overflow-x: auto;
+}
+
+/* ── Loading overlay ─────────────────────────────────────────── */
+#loading {
+  position: fixed; inset: 0; background: var(--bg);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  z-index: 999;
+}
+.loading-dots { display: flex; gap: 8px; margin-top: 18px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); }
+.dot:nth-child(1) { animation: pulse 1s ease-in-out 0s   infinite; }
+.dot:nth-child(2) { animation: pulse 1s ease-in-out .2s  infinite; }
+.dot:nth-child(3) { animation: pulse 1s ease-in-out .4s  infinite; }
+
+/* ── Accidents tab ───────────────────────────────────────────── */
+.accidents-grid { display: grid; gap: 14px; }
+.tbl-accidents.tbl-head,
+.tbl-accidents-row {
+  grid-template-columns: 100px 1fr 80px 90px 70px 70px 1fr;
+}
+.accident-select {
+  background: var(--bg); border: 1px solid var(--border2);
+  color: var(--text); font-family: var(--font-mono); font-size: 10px;
+  padding: 4px 10px; border-radius: 2px;
+}
+.badge-minor    { background: rgba(62,201,126,.12);  color: var(--green); }
+.badge-moderate { background: rgba(232,197,49,.12);    color: var(--yellow); }
+.badge-serious  { background: rgba(240,112,48,.12);    color: var(--orange); }
+.badge-fatal    { background: var(--red-dim);          color: var(--red); }
+
+/* ── Traffic map (real OSM roads, no circles / no fake segments) ─ */
+#trafficMapWrap { position: relative; height: 400px; width: 100%; border-radius: 3px; background: var(--dim); overflow: hidden; }
+#trafficMap { height: 100%; width: 100%; }
+#trafficMapOverlay {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(11,13,16,.85); color: var(--muted); font-size: 11px; letter-spacing: .12em;
+  z-index: 500; pointer-events: none;
+}
+#trafficMapOverlay.hidden { display: none; }
+#trafficMapOverlay.error { color: var(--red); }
+#trafficMap .leaflet-popup-content-wrapper { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 3px; }
+#trafficMap .leaflet-popup-tip { background: var(--surface); }
+.monitor-btn { margin-top: 10px; width: 100%; background: var(--amber); border: none; color: #000; font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; padding: 8px; cursor: pointer; border-radius: 2px; }
+.monitor-btn:hover { opacity: .9; }
+#monitorModal { display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,.7); align-items: center; justify-content: center; padding: 20px; }
+#monitorModal.show { display: flex; }
+#monitorModal .modal-inner { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; max-width: 560px; width: 100%; max-height: 90vh; overflow: auto; }
+#monitorModal .modal-head { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+#monitorModal .modal-title { font-size: 12px; letter-spacing: .1em; color: #fff; }
+#monitorModal .modal-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; padding: 0 6px; }
+#monitorModal .modal-body { padding: 18px; }
+#monitorModal .modal-body canvas { max-height: 220px; }
+#monitorModal .monitor-video-wrap { margin-bottom: 18px; }
+#monitorModal .monitor-video-wrap .video-label { font-size: 9px; letter-spacing: .15em; color: var(--muted); margin-bottom: 8px; }
+#monitorModal .monitor-video-wrap .video-container { position: relative; width: 100%; border-radius: 4px; overflow: hidden; background: #0d0f14; border: 1px solid var(--border); aspect-ratio: 16/9; }
+#monitorModal .monitor-video-wrap .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+.map-legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 6px; font-size: 9px; letter-spacing: .12em; color: var(--muted); }
+.map-legend span { display: flex; align-items: center; gap: 6px; }
+.map-legend i { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── API error banner ───────────────────────────────────────── */
+.api-error-banner {
+  background: rgba(232,55,43,.15); border: 1px solid var(--red);
+  color: #e8a09a; padding: 12px 18px; margin-bottom: 18px; border-radius: 3px;
+  font-size: 11px; line-height: 1.5;
+}
+.api-error-banner #apiErrorText { font-weight: 500; }
+.api-error-hint { display: block; margin-top: 8px; color: var(--muted); font-size: 10px; }
+
+/* ── Tab panels ──────────────────────────────────────────────── */
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+</style>
+</head>
+
+<body>
+<div id="loading">
+  <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:.2em;color:#fff;">
+    CITYFLOW
+  </div>
+  <div style="font-size:9px;letter-spacing:.3em;color:#4a5260;margin-top:6px;">LOADING TRAFFIC DATA</div>
+  <div class="loading-dots">
+    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+  </div>
+</div>
+
+<div id="app" style="opacity:0;transition:opacity .4s;">
+
+<!-- ── Header ─────────────────────────────────────────────────── -->
+<header>
+  <div style="display:flex;align-items:center;gap:24px;">
+    <div class="logo">
+      <div class="logo-dot pulsing"></div>
+      <div>
+        <div class="logo-text">CITYFLOW</div>
+        <div class="logo-sub">TRAFFIC INTELLIGENCE</div>
+      </div>
+    </div>
+    <nav>
+      <button class="tab-btn active" data-tab="overview">OVERVIEW</button>
+      <button class="tab-btn"        data-tab="trends">TRENDS</button>
+      <button class="tab-btn"        data-tab="accidents">ACCIDENTS</button>
+      <button class="tab-btn"        data-tab="ai">AI INSIGHTS</button>
+      <button class="tab-btn"        data-tab="api">API DOCS</button>
+    </nav>
+  </div>
+  <div class="header-right">
+    <span class="last-updated" id="lastUpdated">—</span>
+    <button class="refresh-btn" onclick="refreshAll()">
+      <svg id="refreshIcon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>
+        <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0018.49 15"/>
+      </svg>
+      REFRESH
+    </button>
+  </div>
+</header>
+
+<!-- ── Main ───────────────────────────────────────────────────── -->
+<main>
+
+  <div id="apiErrorBanner" class="api-error-banner" style="display:none;">
+    <span id="apiErrorText"></span>
+    <span class="api-error-hint">Configure SUPABASE_URL and SUPABASE_SERVICE_KEY in the project root .env file, run sql/schema.sql in the Supabase SQL Editor, then run python generate_data.py to seed data.</span>
+  </div>
+  <!-- KPI strip -->
+  <div class="kpi-grid" id="kpiGrid">
+    <!-- filled by JS -->
+  </div>
+
+  <!-- ── OVERVIEW TAB ─────────────────────────────────────────── -->
+  <div class="tab-panel active" id="panel-overview">
+    <div class="card" style="margin-bottom: 14px;">
+      <div class="card-header">
+        <span class="card-title">LIVE TRAFFIC MAP</span>
+        <div class="map-legend">
+          <span><i style="background:#3ec97e;"></i>LOW</span>
+          <span><i style="background:#e8c531;"></i>MODERATE</span>
+          <span><i style="background:#f07030;"></i>HIGH</span>
+          <span><i style="background:#e8372b;"></i>CRITICAL</span>
+        </div>
+      </div>
+      <div id="trafficMapWrap">
+        <div id="trafficMapOverlay">Loading roads…</div>
+        <div id="trafficMap"></div>
+      </div>
+    </div>
+    <div class="overview-grid">
+
+      <!-- Left: full location table -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">LIVE CONGESTION — ALL LOCATIONS</span>
+          <div class="zone-pills" id="zonePills"></div>
+        </div>
+        <div class="tbl-head">
+          <span>LOCATION</span><span>ZONE</span><span>LEVEL</span>
+          <span>SPEED</span><span>DELAY</span>
+        </div>
+        <div id="locationTable"><!-- rows injected --></div>
+      </div>
+
+      <!-- Search congestion history by zone and time -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">SEARCH CONGESTION HISTORY</span>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <label style="font-size:9px;letter-spacing:.1em;color:var(--muted);">ZONE</label>
+            <select id="congestionHistoryZone" class="accident-select">
+              <option value="">All zones</option>
+              <option value="Midtown">Midtown</option>
+              <option value="Downtown">Downtown</option>
+              <option value="Uptown">Uptown</option>
+              <option value="Brooklyn">Brooklyn</option>
+              <option value="Queens">Queens</option>
+            </select>
+            <label style="font-size:9px;letter-spacing:.1em;color:var(--muted);">PERIOD</label>
+            <select id="congestionHistoryHours" class="accident-select">
+              <option value="24">Last 24 hours</option>
+              <option value="168" selected>Last 7 days</option>
+            </select>
+            <button class="refresh-btn" onclick="searchCongestionHistory()">SEARCH</button>
+          </div>
+        </div>
+        <div class="tbl-head">
+          <span>TIME</span><span>LOCATION</span><span>ZONE</span><span>LEVEL</span><span>SPEED</span>
+        </div>
+        <div id="congestionHistoryTable" style="max-height:280px;overflow-y:auto;"><!-- filled by search --></div>
+        <div id="congestionHistoryPlaceholder" style="font-size:10px;color:var(--muted);padding:12px;">Select zone and period, then click SEARCH.</div>
+      </div>
+
+      <!-- Right column -->
+      <div class="right-col">
+
+        <!-- Top 5 critical -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">TOP 5 WORST NOW</span></div>
+          <div id="top5List"><!-- injected --></div>
+        </div>
+
+        <!-- Sparkline -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">7-DAY HOURLY PATTERN</span></div>
+          <div class="chart-box" style="padding:14px 10px 10px;">
+            <canvas id="sparklineChart" height="90"></canvas>
+          </div>
+        </div>
+
+      </div><!-- /right-col -->
+    </div><!-- /overview-grid -->
+  </div>
+
+  <!-- ── TRENDS TAB ────────────────────────────────────────────── -->
+  <div class="tab-panel" id="panel-trends">
+    <div class="trends-grid">
+      <div class="card">
+        <div class="card-header"><span class="card-title">7-DAY AVERAGE CONGESTION BY HOUR</span></div>
+        <div class="chart-box" style="padding:18px 14px 14px;">
+          <canvas id="hourlyChart" height="200"></canvas>
+        </div>
+      </div>
+      <div class="peak-cards" id="peakCards"><!-- injected --></div>
+    </div>
+  </div>
+
+  <!-- ── ACCIDENTS TAB ───────────────────────────────── -->
+  <div class="tab-panel" id="panel-accidents">
+    <div class="accidents-grid">
+      <div class="card" style="grid-column:1/-1;">
+        <div class="card-header">
+          <span class="card-title">RECENT ACCIDENTS — LAST 7 DAYS</span>
+          <div class="zone-pills" id="accidentZonePills"></div>
+        </div>
+        <div class="tbl-head tbl-accidents">
+          <span>TIME</span><span>LOCATION</span><span>ZONE</span><span>SEVERITY</span><span>VEHICLES</span><span>INJURIES</span><span>DESCRIPTION</span>
+        </div>
+        <div id="accidentTable"><!-- rows injected --></div>
+      </div>
+      <div class="card" style="grid-column:1/-1;">
+        <div class="card-header">
+          <span class="card-title">HISTORICAL ACCIDENTS</span>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <span style="font-size:9px;letter-spacing:.1em;color:var(--muted);">ZONE:</span>
+            <div class="zone-pills" id="accidentHistoryZonePills"></div>
+            <label style="font-size:9px;letter-spacing:.1em;color:var(--muted);margin-left:8px;">LAST</label>
+            <select id="accidentHistoryDays" class="accident-select" onchange="loadAccidentHistory()">
+              <option value="7">7 days</option>
+              <option value="30" selected>30 days</option>
+              <option value="90">90 days</option>
+            </select>
+            <label style="font-size:9px;letter-spacing:.1em;color:var(--muted);">SEVERITY</label>
+            <select id="accidentHistorySeverity" class="accident-select" onchange="loadAccidentHistory()">
+              <option value="">All</option>
+              <option value="minor">Minor</option>
+              <option value="moderate">Moderate</option>
+              <option value="serious">Serious</option>
+              <option value="fatal">Fatal</option>
+            </select>
+            <button class="refresh-btn" onclick="loadAccidentHistory()">SEARCH</button>
+          </div>
+        </div>
+        <div class="tbl-head tbl-accidents">
+          <span>TIME</span><span>LOCATION</span><span>ZONE</span><span>SEVERITY</span><span>VEHICLES</span><span>INJURIES</span><span>DESCRIPTION</span>
+        </div>
+        <div id="accidentHistoryTable"><!-- rows injected --></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── AI INSIGHTS TAB ───────────────────────────────────────── -->
+  <div class="tab-panel" id="panel-ai">
+    <div class="ai-grid">
+
+      <!-- Controls -->
+      <div>
+        <div class="card" style="padding:18px;">
+          <div style="font-size:10px;letter-spacing:.22em;color:var(--muted);margin-bottom:14px;">
+            SELECT QUERY TYPE
+          </div>
+          <div class="query-type-btns" id="queryTypeBtns">
+            <button class="qtype-btn active" data-qt="current">
+              <span class="qtype-icon">🔴</span>WORST NOW
+            </button>
+            <button class="qtype-btn" data-qt="trend">
+              <span class="qtype-icon">📊</span>7-DAY TREND
+            </button>
+            <button class="qtype-btn" data-qt="comparison">
+              <span class="qtype-icon">🔄</span>VS TYPICAL
+            </button>
+            <button class="qtype-btn" data-qt="custom">
+              <span class="qtype-icon">✏️</span>CUSTOM
+            </button>
+          </div>
+
+          <div id="customPromptWrap" style="display:none;">
+            <textarea class="custom-prompt" id="customPromptInput"
+              placeholder="Ask anything about the congestion data…"></textarea>
+          </div>
+
+          <button class="gen-btn" id="genBtn" onclick="requestAI()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+            GENERATE INSIGHT
+          </button>
+        </div>
+      </div>
+
+      <!-- Result -->
+      <div id="aiResult">
+        <div class="ai-result">
+          <div class="ai-placeholder">
+            <span class="ai-placeholder-icon">🤖</span>
+            SELECT A QUERY TYPE AND CLICK GENERATE
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /ai-grid -->
+  </div>
+
+  <!-- ── API DOCS TAB ──────────────────────────────────────────── -->
+  <div class="tab-panel" id="panel-api">
+    <div class="api-section">
+      <div style="font-size:10px;letter-spacing:.22em;color:var(--muted);margin-bottom:18px;">REST API REFERENCE</div>
+
+      <!-- endpoints rendered by JS -->
+      <div id="apiDocs"></div>
+    </div>
+  </div>
+
+  <div id="monitorModal" aria-hidden="true">
+    <div class="modal-inner">
+      <div class="modal-head">
+        <span class="modal-title" id="monitorModalTitle">—</span>
+        <button type="button" class="modal-close" onclick="closeMonitorModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="monitor-video-wrap">
+          <div class="video-label">LIVE VIDEO</div>
+          <div class="video-container">
+            <iframe id="monitorLiveVideo" src="https://www.youtube.com/embed/F8J2wBMrtig?autoplay=0" title="Live traffic camera (24/7 demo)" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+          </div>
+          <div style="font-size: 9px; color: var(--muted); margin-top: 6px;">Demo: 24/7 traffic camera stream. In production, connect per-location camera APIs.</div>
+        </div>
+        <div style="font-size: 9px; letter-spacing: .15em; color: var(--muted); margin-bottom: 10px;">LAST 24 HOURS — CONGESTION</div>
+        <canvas id="monitorChart" height="200"></canvas>
+        <div id="monitorTableWrap" style="margin-top: 14px; font-size: 10px; color: var(--muted); max-height: 160px; overflow-y: auto;"></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+</div><!-- /#app -->
+
+<script>
+/* ════════════════════════════════════════════════════
+   STATE
+════════════════════════════════════════════════════ */
+const API = '';            // same origin; change to 'http://localhost:8000' if needed
+let currentData   = [];
+let hourlyData    = [];
+let activeZone    = 'All';
+let activeQType   = 'current';
+let sparkChart    = null;
+let hourlyChart   = null;
+let accidentCurrentData  = [];
+let accidentHistoryData   = [];
+let accidentZoneFilter    = 'All';
+let accidentHistoryZoneFilter = 'All';
+let accidentHistorySeverity   = '';
+let congestionHistoryData = [];
+let trafficMap            = null;
+let trafficMapLayers      = [];
+
+/* ════════════════════════════════════════════════════
+   HELPERS
+════════════════════════════════════════════════════ */
+function sev(level) {
+  if (level >= 75) return 'critical';
+  if (level >= 55) return 'high';
+  if (level >= 30) return 'moderate';
+  return 'low';
+}
+function sevColor(level) {
+  return { critical:'#e8372b', high:'#f07030', moderate:'#e8c531', low:'#3ec97e' }[sev(level)];
+}
+function fmtHour(h) {
+  if (h === 0)  return '12am';
+  if (h === 12) return '12pm';
+  return h < 12 ? `${h}am` : `${h-12}pm`;
+}
+function fmtTime(iso) {
+  return new Date(iso).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+}
+function fmtDate(iso) {
+  return new Date(iso).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+function accidentSevColor(sev) {
+  return { minor:'#3ec97e', moderate:'#e8c531', serious:'#f07030', fatal:'#e8372b' }[sev] || '#4a5260';
+}
+
+/* ════════════════════════════════════════════════════
+   DATA FETCHING
+════════════════════════════════════════════════════ */
+let apiError = '';
+
+async function fetchCurrent() {
+  const params = new URLSearchParams({ limit: 20 });
+  if (activeZone !== 'All') params.set('zone', activeZone);
+  const r = await fetch(`${API}/api/congestion/current?${params}`);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { apiError = j.detail || r.statusText || 'API error'; currentData = []; return; }
+  apiError = '';
+  currentData = j.data || [];
+}
+
+async function fetchHourly() {
+  const r = await fetch(`${API}/api/congestion/summary?days=7`);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { apiError = apiError || j.detail || r.statusText || 'API error'; hourlyData = []; return; }
+  hourlyData = j.hourly_breakdown || [];
+}
+
+async function fetchAccidentsCurrent() {
+  try {
+    const params = new URLSearchParams({ days: 7, limit: 50 });
+    if (accidentZoneFilter !== 'All') params.set('zone', accidentZoneFilter);
+    const r = await fetch(`${API}/api/accidents/current?${params}`);
+    const j = await r.json();
+    accidentCurrentData = j.data || [];
+  } catch (e) {
+    accidentCurrentData = [];
+  }
+}
+
+async function fetchAccidentsHistory() {
+  try {
+    const days = parseInt(document.getElementById('accidentHistoryDays')?.value || '30', 10);
+    const params = new URLSearchParams({ days, limit: 100 });
+    if (accidentHistoryZoneFilter && accidentHistoryZoneFilter !== 'All') params.set('zone', accidentHistoryZoneFilter);
+    const sev = document.getElementById('accidentHistorySeverity')?.value;
+    if (sev) params.set('severity', sev);
+    const r = await fetch(`${API}/api/accidents/history?${params}`);
+    const j = await r.json();
+    accidentHistoryData = j.data || [];
+  } catch (e) {
+    accidentHistoryData = [];
+  }
+}
+
+async function loadAccidentHistory() {
+  await fetchAccidentsHistory();
+  renderAccidentsHistory();
+}
+
+async function refreshAll(isManual = false) {
+  const icon = document.getElementById('refreshIcon');
+  icon.classList.add('spinning');
+  await Promise.all([fetchCurrent(), fetchHourly(), fetchAccidentsCurrent()]);
+  renderAll();
+  document.getElementById('lastUpdated').textContent =
+    'UPDATED ' + new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  icon.classList.remove('spinning');
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER: KPI CARDS
+════════════════════════════════════════════════════ */
+function renderKPI() {
+  const avg = currentData.length
+    ? Math.round(currentData.reduce((s,r)=>s+r.congestion_level,0)/currentData.length)
+    : 0;
+  const crit   = currentData.filter(r=>r.congestion_level>=75).length;
+  const worst  = currentData[0] || null;
+  const nowH   = new Date().getHours();
+  const typical = (hourlyData.find(h=>h.hour===nowH)||{}).avg_congestion || 0;
+  const delta  = avg - typical;
+
+  const kpis = [
+    {
+      label: 'CITY AVG CONGESTION',
+      value: avg, unit: '/ 100',
+      color: sevColor(avg),
+      badge: sev(avg).toUpperCase(),
+      badgeClass: `badge-${sev(avg)}`,
+    },
+    {
+      label: 'CRITICAL LOCATIONS',
+      value: crit, unit: `/ ${currentData.length}`,
+      color: crit > 0 ? '#e8372b' : '#3ec97e',
+      badge: crit > 0 ? 'NEED ATTENTION' : 'ALL CLEAR',
+      badgeClass: crit > 0 ? 'badge-critical' : 'badge-low',
+    },
+    {
+      label: 'VS 7-DAY TYPICAL',
+      value: (delta>0?'+':'')+delta, unit: 'pts',
+      color: delta>5 ? '#e8372b' : delta<-5 ? '#3ec97e' : '#e8c531',
+      badge: delta>5 ? 'ABOVE TYPICAL' : delta<-5 ? 'BELOW TYPICAL' : 'NORMAL',
+      badgeClass: delta>5 ? 'badge-critical' : delta<-5 ? 'badge-low' : 'badge-moderate',
+    },
+    {
+      label: 'WORST LOCATION NOW',
+      value: worst ? worst.congestion_level : '—',
+      unit: worst ? '/ 100' : '',
+      color: worst ? sevColor(worst.congestion_level) : '#4a5260',
+      badge: worst ? worst.name.split('&')[0].trim() : 'N/A',
+      badgeClass: worst ? `badge-${sev(worst.congestion_level)}` : '',
+    },
+  ];
+
+  document.getElementById('kpiGrid').innerHTML = kpis.map((k,i) => `
+    <div class="kpi-card fade-up" style="animation-delay:${i*0.06}s;border-top:2px solid ${k.color}">
+      <div class="kpi-label">${k.label}</div>
+      <div>
+        <span class="kpi-value" style="color:${k.color}">${k.value}</span>
+        <span class="kpi-unit">${k.unit}</span>
+      </div>
+      <span class="kpi-badge ${k.badgeClass}">${k.badge}</span>
+    </div>
+  `).join('');
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER: ZONE PILLS
+════════════════════════════════════════════════════ */
+function renderZonePills() {
+  const zones = ['All', ...new Set(currentData.map(r=>r.zone))];
+  document.getElementById('zonePills').innerHTML = zones.map(z => `
+    <button class="zone-pill ${z===activeZone?'active':''}" onclick="setZone('${z}')">${z==='All'?'ALL':z.toUpperCase()}</button>
+  `).join('');
+}
+
+function setZone(z) {
+  activeZone = z;
+  fetchCurrent().then(()=>{
+    renderZonePills();
+    renderTable();
+    renderTop5();
+    renderKPI();
+  });
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER: LOCATION TABLE
+════════════════════════════════════════════════════ */
+function renderTable() {
+  document.getElementById('locationTable').innerHTML = currentData.map((r,i) => {
+    const s = sev(r.congestion_level);
+    const c = sevColor(r.congestion_level);
+    return `
+      <div class="tbl-row fade-up" style="animation-delay:${i*0.025}s">
+        <div>
+          <div class="loc-name">${r.name}</div>
+          <div class="loc-meta">${r.road_type.toUpperCase()} · ${fmtTime(r.timestamp)}</div>
+        </div>
+        <div class="zone-tag">${r.zone}</div>
+        <div class="bar-wrap">
+          <div class="bar-bg">
+            <div class="bar-fill" style="width:${r.congestion_level}%;background:${c}"></div>
+          </div>
+          <span class="bar-num sev-${s}">${r.congestion_level}</span>
+        </div>
+        <div class="speed-val">${r.speed_mph} mph</div>
+        <div class="delay-val ${r.delay_minutes>5?'sev-high':'speed-val'}">+${r.delay_minutes.toFixed(1)} min</div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER: TOP 5
+════════════════════════════════════════════════════ */
+function renderTop5() {
+  const top = [...currentData].sort((a,b)=>b.congestion_level-a.congestion_level).slice(0,5);
+  document.getElementById('top5List').innerHTML = top.map((r,i) => {
+    const c = sevColor(r.congestion_level);
+    return `
+      <div class="top5-item">
+        <div class="top5-rank">${i+1}</div>
+        <div class="top5-info">
+          <div class="top5-name">${r.name}</div>
+          <div class="top5-bar">
+            <div class="top5-fill" style="width:${r.congestion_level}%;background:${c}"></div>
+          </div>
+        </div>
+        <span style="font-size:14px;font-weight:500;color:${c};margin-left:8px;min-width:26px;">${r.congestion_level}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER: SPARKLINE (overview)
+════════════════════════════════════════════════════ */
+function renderSparkline() {
+  const labels = hourlyData.map(h=>fmtHour(h.hour));
+  const data   = hourlyData.map(h=>h.avg_congestion);
+  const ctx    = document.getElementById('sparklineChart').getContext('2d');
+  if (sparkChart) sparkChart.destroy();
+  sparkChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        borderColor: '#f5a623',
+        borderWidth: 1.5,
+        pointRadius: 0,
+        tension: 0.4,
+        fill: true,
+        backgroundColor: (ctx2) => {
+          const g = ctx2.chart.ctx.createLinearGradient(0,0,0,ctx2.chart.height);
+          g.addColorStop(0,'rgba(245,166,35,.25)');
+          g.addColorStop(1,'rgba(245,166,35,0)');
+          return g;
+        },
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend:{display:false}, tooltip:{
+        backgroundColor:'#111418',
+        borderColor:'#242830', borderWidth:1,
+        titleColor:'#4a5260', bodyColor:'#d4d8df',
+        titleFont:{family:'IBM Plex Mono',size:10},
+        bodyFont:{family:'IBM Plex Mono',size:11},
+        callbacks:{ label: v=>`Avg: ${v.raw}` },
+      }},
+      scales: {
+        x: { grid:{color:'#1c2028'}, ticks:{color:'#3a4050',font:{family:'IBM Plex Mono',size:8}, maxTicksLimit:8} },
+        y: { grid:{color:'#1c2028'}, ticks:{color:'#3a4050',font:{family:'IBM Plex Mono',size:8}}, min:0, max:100 },
+      },
+    },
+  });
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER: HOURLY AREA CHART (trends tab)
+════════════════════════════════════════════════════ */
+function renderHourlyChart() {
+  const labels = hourlyData.map(h=>fmtHour(h.hour));
+  const data   = hourlyData.map(h=>h.avg_congestion);
+  const ctx    = document.getElementById('hourlyChart').getContext('2d');
+  if (hourlyChart) hourlyChart.destroy();
+  hourlyChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Avg Congestion',
+        data,
+        borderColor: '#f07030',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointBackgroundColor: '#f07030',
+        tension: 0.4,
+        fill: true,
+        backgroundColor: (ctx2)=>{
+          const g = ctx2.chart.ctx.createLinearGradient(0,0,0,ctx2.chart.height);
+          g.addColorStop(0,'rgba(240,112,48,.28)');
+          g.addColorStop(1,'rgba(240,112,48,0)');
+          return g;
+        },
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: { legend:{display:false}, tooltip:{
+        backgroundColor:'#111418', borderColor:'#242830', borderWidth:1,
+        titleColor:'#4a5260', bodyColor:'#d4d8df',
+        titleFont:{family:'IBM Plex Mono',size:10},
+        bodyFont:{family:'IBM Plex Mono',size:11},
+      }},
+      scales: {
+        x: { grid:{color:'#1a2028'}, ticks:{color:'#4a5260',font:{family:'IBM Plex Mono',size:10}} },
+        y: { grid:{color:'#1a2028'}, ticks:{color:'#4a5260',font:{family:'IBM Plex Mono',size:10}}, min:0, max:100 },
+      },
+    },
+  });
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER: PEAK SUMMARY CARDS
+════════════════════════════════════════════════════ */
+function renderPeakCards() {
+  const blocks = [
+    { label:'AM PEAK',  hours:'6am – 9am',  range:[6,9]  },
+    { label:'MIDDAY',   hours:'10am – 3pm', range:[10,15] },
+    { label:'PM PEAK',  hours:'4pm – 7pm',  range:[16,19] },
+  ];
+  document.getElementById('peakCards').innerHTML = blocks.map(b => {
+    const vals = hourlyData.filter(h=>h.hour>=b.range[0]&&h.hour<=b.range[1]).map(h=>h.avg_congestion);
+    const avg  = vals.length ? Math.round(vals.reduce((a,c)=>a+c,0)/vals.length) : 0;
+    const s    = sev(avg);
+    const c    = sevColor(avg);
+    return `
+      <div class="peak-card" style="border-top:2px solid ${c}">
+        <div class="peak-label">${b.label}</div>
+        <div class="peak-hours">${b.hours}</div>
+        <div class="peak-num" style="color:${c}">${avg}</div>
+        <div style="font-size:9px;color:#4a5260;margin-top:4px;">AVG CONGESTION</div>
+        <span class="kpi-badge badge-${s}" style="margin-top:8px;">${s.toUpperCase()}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER: LIVE TRAFFIC MAP (static road segments, colored by live congestion)
+════════════════════════════════════════════════════ */
+function renderTrafficMap() {
+  const wrap = document.getElementById('trafficMapWrap');
+  const overlay = document.getElementById('trafficMapOverlay');
+  if (!wrap || !overlay) return;
+  const withCoords = (currentData || []).filter(r => r.lat != null && r.lng != null);
+  if (!withCoords.length) {
+    overlay.textContent = 'No location data';
+    overlay.classList.remove('hidden');
+    overlay.classList.add('error');
+    return;
+  }
+
+  if (!trafficMap) {
+    trafficMap = L.map('trafficMap', { zoomControl: true }).setView([40.75, -73.98], 11);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap &copy; CartoDB',
+      maxZoom: 19,
+    }).addTo(trafficMap);
+  }
+
+  trafficMapLayers.forEach(l => l.remove());
+  trafficMapLayers = [];
+  overlay.classList.add('hidden');
+
+  const bounds = [];
+  withCoords.forEach(r => {
+    const color = sevColor(r.congestion_level);
+    const marker = L.circleMarker([r.lat, r.lng], {
+      radius: 10,
+      fillColor: color,
+      color: '#fff',
+      weight: 1.5,
+      opacity: 1,
+      fillOpacity: 0.9,
+    });
+    const locId = (r.location_id || '').replace(/'/g, "\\'");
+    const locName = (r.name || '').replace(/'/g, "\\'").replace(/</g, '&lt;');
+    marker.bindPopup(`
+      <div style="font-family: 'IBM Plex Mono'; font-size: 11px; min-width: 200px;">
+        <div style="font-weight: 500; color: #fff; margin-bottom: 4px;">${(r.name || '').replace(/</g, '&lt;')}</div>
+        <div style="color: #4a5260;">${(r.zone || '').replace(/</g, '&lt;')} · ${(r.road_type || '').replace(/</g, '&lt;')}</div>
+        <div style="margin-top: 8px;"><span style="color: ${color};">Congestion ${r.congestion_level}</span> / 100</div>
+        ${(r.speed_mph != null) ? `<div>${r.speed_mph} mph</div>` : ''} ${(r.delay_minutes != null) ? `<div>+${r.delay_minutes.toFixed(1)} min delay</div>` : ''}
+        <button type="button" class="monitor-btn" onclick="window.showLocationMonitoring('${locId}','${locName}')">VIEW REAL-TIME MONITORING</button>
+      </div>
+    `);
+    marker.addTo(trafficMap);
+    trafficMapLayers.push(marker);
+    bounds.push([r.lat, r.lng]);
+  });
+
+  if (bounds.length) try { trafficMap.fitBounds(bounds, { padding: [24, 24], maxZoom: 14 }); } catch (_) {}
+}
+
+let monitorChart = null;
+
+function closeMonitorModal() {
+  document.getElementById('monitorModal').classList.remove('show');
+  if (monitorChart) { monitorChart.destroy(); monitorChart = null; }
+}
+
+function showLocationMonitoring(locationId, name) {
+  if (!locationId) return;
+  const modal = document.getElementById('monitorModal');
+  const titleEl = document.getElementById('monitorModalTitle');
+  const tableWrap = document.getElementById('monitorTableWrap');
+  titleEl.textContent = name || 'Monitoring';
+  modal.classList.add('show');
+
+  fetch(`${API}/api/congestion/history?location_id=${encodeURIComponent(locationId)}&hours=24`)
+    .then(res => res.json())
+    .then(data => {
+      const list = (data.data || []).slice(0, 96);
+      list.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      const labels = list.map(d => {
+        const dt = new Date(d.timestamp);
+        return dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      });
+      const values = list.map(d => d.congestion_level);
+
+      const ctx = document.getElementById('monitorChart').getContext('2d');
+      if (monitorChart) monitorChart.destroy();
+      monitorChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Congestion',
+            data: values,
+            borderColor: '#f5a623',
+            backgroundColor: 'rgba(245,166,35,.15)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.3,
+            pointRadius: 1,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { color: '#1c2028' }, ticks: { color: '#4a5260', maxTicksLimit: 12 } },
+            y: { min: 0, max: 100, grid: { color: '#1c2028' }, ticks: { color: '#4a5260' } },
+          },
+        },
+      });
+
+      tableWrap.innerHTML = '<div style="font-size:9px;letter-spacing:.1em;color:var(--muted);margin-bottom:6px;">RECENT READINGS (time · level · speed)</div>' +
+        list.slice(-12).reverse().map(d => {
+          const t = new Date(d.timestamp).toLocaleTimeString();
+          const loc = d.locations || {};
+          return `<div style="padding:4px 0;border-bottom:1px solid var(--border);">${t} · <span style="color:${sevColor(d.congestion_level)}">${d.congestion_level}</span> · ${d.speed_mph != null ? d.speed_mph + ' mph' : '—'}</div>`;
+        }).join('') || '<div style="color:var(--muted);">No history</div>';
+    })
+    .catch(() => {
+      tableWrap.innerHTML = '<div style="color:var(--red);">Failed to load monitoring data</div>';
+    });
+}
+
+document.getElementById('monitorModal').addEventListener('click', function(e) {
+  if (e.target === this) closeMonitorModal();
+});
+
+function setAccidentHistoryZone(z) {
+  accidentHistoryZoneFilter = z;
+  loadAccidentHistory();
+}
+
+function renderAccidentHistoryZonePills() {
+  const zones = ['All', ...new Set(accidentCurrentData.map(r=>r.zone).filter(Boolean))];
+  const el = document.getElementById('accidentHistoryZonePills');
+  if (!el) return;
+  el.innerHTML = zones.map(z =>
+    `<button class="zone-pill ${z===accidentHistoryZoneFilter?'active':''}" onclick="setAccidentHistoryZone('${z}')">${z==='All'?'ALL':z.toUpperCase()}</button>`
+  ).join('');
+}
+
+async function searchCongestionHistory() {
+  const zoneEl = document.getElementById('congestionHistoryZone');
+  const hoursEl = document.getElementById('congestionHistoryHours');
+  const zone = zoneEl?.value || '';
+  const hours = parseInt(hoursEl?.value || '24', 10);
+  const params = new URLSearchParams({ hours: hours.toString() });
+  if (zone) params.set('zone', zone);
+  try {
+    const r = await fetch(`${API}/api/congestion/history?${params}`);
+    const j = await r.json();
+    congestionHistoryData = j.data || [];
+  } catch (e) {
+    congestionHistoryData = [];
+  }
+  renderCongestionHistoryTable();
+}
+
+function renderCongestionHistoryTable() {
+  const placeholder = document.getElementById('congestionHistoryPlaceholder');
+  const tableWrap = document.getElementById('congestionHistoryTable');
+  if (!tableWrap) return;
+  if (!congestionHistoryData.length) {
+    placeholder.style.display = 'block';
+    tableWrap.innerHTML = '';
+    return;
+  }
+  placeholder.style.display = 'none';
+  const rows = congestionHistoryData.slice(0, 150).map(r => {
+    const loc = r.locations || {};
+    const name = loc.name || '—';
+    const zone = loc.zone || '—';
+    const t = new Date(r.timestamp).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const lvl = r.congestion_level != null ? r.congestion_level : '—';
+    const spd = r.speed_mph != null ? r.speed_mph + ' mph' : '—';
+    const c = sevColor(lvl);
+    return `<div class="tbl-row" style="display:grid;grid-template-columns:1fr 1.2fr 0.8fr 0.6fr 0.7fr;gap:8px;padding:6px 10px;border-bottom:1px solid var(--border);font-size:10px;">
+      <span style="color:var(--muted);">${t}</span>
+      <span>${(name+'').replace(/</g,'&lt;')}</span>
+      <span class="zone-tag">${(zone+'').replace(/</g,'&lt;')}</span>
+      <span style="color:${c}">${lvl}</span>
+      <span>${spd}</span>
+    </div>`;
+  }).join('');
+  tableWrap.innerHTML = rows;
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER: ACCIDENTS
+════════════════════════════════════════════════════ */
+function renderAccidentZonePills() {
+  const zones = ['All', ...new Set(accidentCurrentData.map(r=>r.zone).filter(Boolean))];
+  const el = document.getElementById('accidentZonePills');
+  if (!el) return;
+  el.innerHTML = zones.map(z => `
+    <button class="zone-pill ${z===accidentZoneFilter?'active':''}" onclick="setAccidentZone('${z}')">${z==='All'?'ALL':z.toUpperCase()}</button>
+  `).join('');
+}
+
+function setAccidentZone(z) {
+  accidentZoneFilter = z;
+  fetchAccidentsCurrent().then(() => {
+    renderAccidentZonePills();
+    renderAccidentsCurrent();
+  });
+}
+
+function renderAccidentsCurrent() {
+  const el = document.getElementById('accidentTable');
+  if (!el) return;
+  if (!accidentCurrentData.length) {
+    el.innerHTML = '<div class="tbl-row" style="grid-template-columns:1fr;padding:24px;color:var(--muted);font-size:11px;">No recent accidents in the selected period.</div>';
+    return;
+  }
+  el.innerHTML = accidentCurrentData.map((r,i) => {
+    const c = accidentSevColor(r.severity);
+    return `
+      <div class="tbl-row tbl-accidents-row fade-up" style="animation-delay:${i*0.02}s">
+        <div class="loc-meta">${fmtDate(r.occurred_at)}</div>
+        <div class="loc-name">${(r.location_name || '—').replace(/</g,'&lt;')}</div>
+        <div class="zone-tag">${(r.zone || '—').replace(/</g,'&lt;')}</div>
+        <span class="kpi-badge badge-${r.severity}" style="margin:0;">${(r.severity||'').toUpperCase()}</span>
+        <div>${r.vehicles_involved ?? '—'}</div>
+        <div class="${r.injuries > 0 ? 'sev-high' : ''}">${r.injuries ?? 0}</div>
+        <div class="loc-meta" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(r.description||'').replace(/"/g,'&quot;')}">${(r.description || '—').replace(/</g,'&lt;')}</div>
+      </div>`;
+  }).join('');
+}
+
+function renderAccidentsHistory() {
+  const el = document.getElementById('accidentHistoryTable');
+  if (!el) return;
+  if (!accidentHistoryData.length) {
+    el.innerHTML = '<div class="tbl-row" style="grid-template-columns:1fr;padding:24px;color:var(--muted);font-size:11px;">No accidents in the selected period.</div>';
+    return;
+  }
+  el.innerHTML = accidentHistoryData.map((r,i) => {
+    const c = accidentSevColor(r.severity);
+    return `
+      <div class="tbl-row tbl-accidents-row fade-up" style="animation-delay:${i*0.02}s">
+        <div class="loc-meta">${fmtDate(r.occurred_at)}</div>
+        <div class="loc-name">${(r.location_name || '—').replace(/</g,'&lt;')}</div>
+        <div class="zone-tag">${(r.zone || '—').replace(/</g,'&lt;')}</div>
+        <span class="kpi-badge badge-${r.severity}" style="margin:0;">${(r.severity||'').toUpperCase()}</span>
+        <div>${r.vehicles_involved ?? '—'}</div>
+        <div class="${r.injuries > 0 ? 'sev-high' : ''}">${r.injuries ?? 0}</div>
+        <div class="loc-meta" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(r.description||'').replace(/"/g,'&quot;')}">${(r.description || '—').replace(/</g,'&lt;')}</div>
+      </div>`;
+  }).join('');
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER: API DOCS
+════════════════════════════════════════════════════ */
+function renderAPIDocs() {
+  const endpoints = [
+    {
+      method:'GET', path:'/api/congestion/current',
+      desc:'Returns the latest congestion reading for every monitored location.',
+      params:[
+        {name:'zone',     type:'string',  desc:'Filter by zone: Midtown, Downtown, Uptown, Brooklyn, Queens'},
+        {name:'severity', type:'string',  desc:'low | moderate | high | critical'},
+        {name:'limit',    type:'integer', desc:'Max results (default 20, max 100)'},
+      ],
+      example:'GET /api/congestion/current?zone=Midtown&severity=critical',
+    },
+    {
+      method:'GET', path:'/api/congestion/history',
+      desc:'Returns time-series readings for a location or zone.',
+      params:[
+        {name:'location_id', type:'uuid',    desc:'Filter to a single location'},
+        {name:'zone',        type:'string',  desc:'Filter by zone name'},
+        {name:'hours',       type:'integer', desc:'Lookback window (default 24, max 168)'},
+      ],
+      example:'GET /api/congestion/history?zone=Brooklyn&hours=48',
+    },
+    {
+      method:'GET', path:'/api/congestion/top',
+      desc:'Returns the N most congested locations based on latest readings.',
+      params:[
+        {name:'limit', type:'integer', desc:'Number of results (default 10, max 20)'},
+        {name:'zone',  type:'string',  desc:'Optional zone filter'},
+      ],
+      example:'GET /api/congestion/top?limit=5',
+    },
+    {
+      method:'GET', path:'/api/congestion/summary',
+      desc:'Returns aggregated 24-hour statistics over the past N days.',
+      params:[
+        {name:'zone', type:'string',  desc:'Optional zone filter'},
+        {name:'days', type:'integer', desc:'Lookback days (default 7, max 30)'},
+      ],
+      example:'GET /api/congestion/summary?zone=Queens&days=14',
+    },
+    {
+      method:'GET', path:'/api/accidents/current',
+      desc:'Returns recent accident/crash reports (latest first).',
+      params:[
+        {name:'zone', type:'string',  desc:'Filter by zone'},
+        {name:'days', type:'integer', desc:'Lookback days (default 7, max 30)'},
+        {name:'limit', type:'integer', desc:'Max results (default 50, max 200)'},
+      ],
+      example:'GET /api/accidents/current?zone=Midtown&days=7',
+    },
+    {
+      method:'GET', path:'/api/accidents/history',
+      desc:'Returns historical accident records with optional filters.',
+      params:[
+        {name:'zone', type:'string', desc:'Filter by zone'},
+        {name:'location_id', type:'uuid', desc:'Filter by location'},
+        {name:'days', type:'integer', desc:'Lookback days (default 30, max 365)'},
+        {name:'severity', type:'string', desc:'minor | moderate | serious | fatal'},
+        {name:'limit', type:'integer', desc:'Max results (default 100, max 500)'},
+      ],
+      example:'GET /api/accidents/history?days=30&severity=serious',
+    },
+    {
+      method:'POST', path:'/api/ai/summary',
+      desc:'Sends a compact data snapshot to GPT-4o-mini and returns an actionable narrative.',
+      params:[
+        {name:'query_type',    type:'string', desc:'current | trend | comparison | custom'},
+        {name:'custom_prompt', type:'string', desc:'Custom question (required for query_type=custom)'},
+      ],
+      example:'POST /api/ai/summary\n{ "query_type": "comparison" }',
+    },
+  ];
+
+  document.getElementById('apiDocs').innerHTML = endpoints.map(ep => `
+    <div class="endpoint-card">
+      <div class="ep-row">
+        <span class="method-badge method-${ep.method.toLowerCase()}">${ep.method}</span>
+        <code class="ep-path">${ep.path}</code>
+      </div>
+      <div class="ep-desc">${ep.desc}</div>
+      <div>
+        ${ep.params.map(p=>`
+          <div class="param-row">
+            <code class="param-name">${p.name}</code>
+            <span class="param-type">${p.type}</span>
+            <span class="param-desc">${p.desc}</span>
+          </div>
+        `).join('')}
+      </div>
+      <pre class="ep-example">${ep.example}</pre>
+    </div>
+  `).join('');
+}
+
+/* ════════════════════════════════════════════════════
+   RENDER ALL
+════════════════════════════════════════════════════ */
+function renderAll() {
+  var banner = document.getElementById('apiErrorBanner');
+  var bannerText = document.getElementById('apiErrorText');
+  if (banner && bannerText) {
+    banner.style.display = apiError ? 'block' : 'none';
+    bannerText.textContent = apiError || '';
+  }
+  renderKPI();
+  renderZonePills();
+  renderTable();
+  renderTop5();
+  renderSparkline();
+  renderHourlyChart();
+  renderPeakCards();
+  renderTrafficMap();
+  renderAccidentZonePills();
+  renderAccidentHistoryZonePills();
+  renderAccidentsCurrent();
+  renderAccidentsHistory();
+  renderAPIDocs();
+}
+
+/* ════════════════════════════════════════════════════
+   TABS
+════════════════════════════════════════════════════ */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'accidents') {
+      if (accidentHistoryData.length === 0) loadAccidentHistory();
+      renderAccidentHistoryZonePills();
+    }
+  });
+});
+
+/* ════════════════════════════════════════════════════
+   AI QUERY TYPE BUTTONS
+════════════════════════════════════════════════════ */
+document.querySelectorAll('.qtype-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.qtype-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    activeQType = btn.dataset.qt;
+    document.getElementById('customPromptWrap').style.display =
+      activeQType === 'custom' ? 'block' : 'none';
+  });
+});
+
+/* ════════════════════════════════════════════════════
+   AI REQUEST
+════════════════════════════════════════════════════ */
+async function requestAI() {
+  const btn = document.getElementById('genBtn');
+  btn.disabled = true;
+  btn.innerHTML = `<svg class="spinning" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg> ANALYZING…`;
+
+  document.getElementById('aiResult').innerHTML = `
+    <div class="ai-result">
+      <div class="ai-placeholder"><span class="ai-placeholder-icon pulsing">⚡</span>QUERYING DATABASE & GPT-4o-mini…</div>
+    </div>`;
+
+  const body = {
+    query_type: activeQType,
+    custom_prompt: document.getElementById('customPromptInput').value || undefined,
+  };
+
+  try {
+    const r = await fetch(`${API}/api/ai/summary`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body),
+    });
+    const j = await r.json();
+    const snap = j.data_snapshot || {};
+    const deltaColor = snap.delta > 5 ? '#e8372b' : snap.delta < -5 ? '#3ec97e' : '#e8c531';
+
+    document.getElementById('aiResult').innerHTML = `
+      <div class="ai-result fade-up">
+        <div class="ai-snap">
+          <div class="snap-card">
+            <div class="snap-lbl">CITY AVG NOW</div>
+            <div class="snap-val" style="color:${sevColor(snap.city_avg_now||0)}">${snap.city_avg_now ?? '—'}</div>
+          </div>
+          <div class="snap-card">
+            <div class="snap-lbl">TYPICAL THIS HOUR</div>
+            <div class="snap-val" style="color:#8090a0">${snap.typical_this_hour ?? '—'}</div>
+          </div>
+          <div class="snap-card">
+            <div class="snap-lbl">DELTA</div>
+            <div class="snap-val" style="color:${deltaColor}">${snap.delta >= 0 ? '+' : ''}${snap.delta ?? '—'}</div>
+          </div>
+        </div>
+        <div style="font-size:9px;letter-spacing:.18em;color:var(--muted);margin-bottom:10px;">AI ANALYSIS — GPT-4o-mini</div>
+        <div class="ai-text">${j.summary}</div>
+        <div class="ai-footer">WORST LOCATION: ${snap.worst_location || 'N/A'} · GENERATED ${new Date(j.generated_at).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}</div>
+      </div>`;
+  } catch(e) {
+    document.getElementById('aiResult').innerHTML = `
+      <div class="ai-result"><div class="ai-placeholder">⚠️ ERROR — ${e.message}</div></div>`;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> GENERATE INSIGHT`;
+}
+
+/* ════════════════════════════════════════════════════
+   BOOT
+════════════════════════════════════════════════════ */
+(async () => {
+  await Promise.all([fetchCurrent(), fetchHourly()]);
+  renderAll();
+  document.getElementById('lastUpdated').textContent =
+    'UPDATED ' + new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').style.opacity = '1';
+
+  // Auto-refresh every 60s
+  setInterval(()=>refreshAll(true), 60_000);
+})();
+</script>
+</body>
+</html>
