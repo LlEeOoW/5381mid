@@ -23,11 +23,12 @@ from openai import OpenAI
 from pydantic import BaseModel
 from supabase import create_client, Client
 
-load_dotenv()
+load_dotenv(dotenv_path=os.path.join(BASE_DIR, ".env"), override=True)
 
 # ── Clients (lazy init so server starts without valid keys) ───────────────────
 _supabase: Optional[Client] = None
 _openai_client: Optional[OpenAI] = None
+REQUIRED_ENV_VARS = ("SUPABASE_URL", "SUPABASE_SERVICE_KEY", "OPENAI_API_KEY")
 
 def _get_supabase() -> Client:
     global _supabase
@@ -36,6 +37,11 @@ def _get_supabase() -> Client:
         key = os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
         if not url or not key or url.startswith("https://YOUR"):
             raise HTTPException(503, "Configure SUPABASE_URL and SUPABASE_SERVICE_KEY in .env")
+        if key.startswith("sb_publishable_"):
+            raise HTTPException(
+                503,
+                "SUPABASE_SERVICE_KEY is a publishable key; use service_role/secret key for backend.",
+            )
         _supabase = create_client(url, key)
     return _supabase
 
@@ -48,6 +54,37 @@ def _get_openai() -> OpenAI:
         _openai_client = OpenAI(api_key=api_key)
     return _openai_client
 
+def _config_status() -> dict:
+    missing = []
+    placeholders = []
+    invalid_types = []
+    values = {
+        "SUPABASE_URL": os.environ.get("SUPABASE_URL", "").strip(),
+        "SUPABASE_SERVICE_KEY": os.environ.get("SUPABASE_SERVICE_KEY", "").strip(),
+        "OPENAI_API_KEY": os.environ.get("OPENAI_API_KEY", "").strip(),
+    }
+    placeholder_prefix = {
+        "SUPABASE_URL": "https://YOUR",
+        "SUPABASE_SERVICE_KEY": "YOUR_",
+        "OPENAI_API_KEY": "sk-YOUR",
+    }
+
+    for key in REQUIRED_ENV_VARS:
+        value = values.get(key, "")
+        if not value:
+            missing.append(key)
+        elif value.startswith(placeholder_prefix[key]):
+            placeholders.append(key)
+    if values["SUPABASE_SERVICE_KEY"].startswith("sb_publishable_"):
+        invalid_types.append("SUPABASE_SERVICE_KEY (publishable key is for frontend only)")
+
+    return {
+        "ok": not missing and not placeholders and not invalid_types,
+        "missing": missing,
+        "placeholder_values": placeholders,
+        "invalid_types": invalid_types,
+    }
+
 # ── App ────────────────────────────────────────────────────────────────────
 app = FastAPI(
     title="CityFlow Traffic Intelligence API",
@@ -55,6 +92,18 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs",
 )
+
+@app.on_event("startup")
+async def startup_config_check():
+    status = _config_status()
+    if status["ok"]:
+        print("Startup check: required environment variables are configured.")
+        return
+    print("Startup check warning: environment configuration is incomplete.")
+    if status["missing"]:
+        print(f"Missing vars: {', '.join(status['missing'])}")
+    if status["placeholder_values"]:
+        print(f"Placeholder vars: {', '.join(status['placeholder_values'])}")
 
 app.add_middleware(
     CORSMiddleware,
@@ -85,6 +134,20 @@ async def serve_dashboard():
     path = os.path.join(BASE_DIR, "templates", "dashboard.html")
     with open(path, encoding="utf-8") as f:
         return f.read()
+
+@app.get(
+    "/health",
+    summary="Service health and configuration status",
+    tags=["System"],
+)
+async def health():
+    status = _config_status()
+    return {
+        "status": "ok" if status["ok"] else "degraded",
+        "service": "cityflow-api",
+        "config": status,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
 
 # ══════════════════════════════════════════════════════════════════════
 # GET /api/osm/ways — proxy for Overpass API (real road geometry for map)
@@ -225,7 +288,7 @@ async def get_top(
 )
 async def get_summary(
     zone: Optional[str] = Query(None),
-    days: int = Query(7, ge=1, le=30),
+    days: int = Query(30, ge=1, le=30),
 ):
     """
     Returns 24-hour average congestion breakdown plus key stats.
